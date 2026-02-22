@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sort Admin</title>
+    <link rel="icon" type="image/png" href="sort-logo.png">
+    <link rel="apple-touch-icon" href="sort-logo.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --blue: #2196F3;
+            --blue-light: #E3F2FD;
+            --blue-hover: #1976D2;
+            --green: #E53935;
+            --green-light: #FFEBEE;
+            --orange: #F59E0B;
+            --orange-light: #FFFBEB;
+            --red: #EF4444;
+            --red-light: #FEF2F2;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-700: #334155;
+            --gray-900: #0F172A;
+            --white: #FFFFFF;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+        }
+
+        /* Layout */
+        .app { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: 260px;
+            background: var(--white);
+            border-right: 1px solid var(--gray-200);
+            padding: 24px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-logo h1 { font-size: 20px; font-weight: 700; }
+        .sidebar-logo h1 span { color: var(--blue); }
+        .sidebar-logo p { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            cursor: pointer;
+            color: var(--gray-500);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover { background: var(--gray-50); color: var(--gray-700); }
+        .nav-item.active { color: var(--blue); background: var(--blue-light); border-left-color: var(--blue); }
+        .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .main { margin-left: 260px; flex: 1; padding: 32px; }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .page-header h2 { font-size: 24px; font-weight: 700; }
+        .page-header p { color: var(--gray-500); font-size: 14px; margin-top: 2px; }
+
+        /* Stats */
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stats-wide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+
+        /* Funnel */
+        .funnel { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+        .funnel-step {
+            flex: 1;
+            background: var(--white);
+            padding: 20px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+        .funnel-step:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+        .funnel-step:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+        .funnel-step .funnel-number { font-size: 28px; font-weight: 700; }
+        .funnel-step .funnel-label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+        .funnel-step .funnel-pct { font-size: 11px; font-weight: 600; margin-top: 6px; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+        .funnel-arrow { font-size: 20px; color: var(--gray-400); padding: 0 2px; flex-shrink: 0; }
+        .pct-good { background: #DCFCE7; color: #16A34A; }
+        .pct-ok { background: #FEF9C3; color: #CA8A04; }
+        .pct-bad { background: #FEE2E2; color: #DC2626; }
+
+        .section-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; color: var(--gray-700); }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card .icon {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .stat-card .icon.blue { background: var(--blue-light); color: var(--blue); }
+        .stat-card .icon.green { background: var(--green-light); color: var(--green); }
+        .stat-card .icon.orange { background: var(--orange-light); color: var(--orange); }
+        .stat-card .icon.red { background: var(--red-light); color: var(--red); }
+        .stat-card .number { font-size: 28px; font-weight: 700; }
+        .stat-card .label { color: var(--gray-500); font-size: 13px; margin-top: 2px; }
+
+        /* Cards / Sections */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .card-header h3 { font-size: 16px; font-weight: 600; }
+        .card-body { padding: 24px; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+
+        .btn-primary { background: var(--blue); color: white; }
+        .btn-primary:hover { background: var(--blue-hover); }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+        .btn-secondary:hover { background: var(--gray-200); }
+        .btn-danger { background: var(--red-light); color: var(--red); }
+        .btn-danger:hover { background: #FEE2E2; }
+        .btn-warning { background: var(--orange-light); color: #B45309; }
+        .btn-warning:hover { background: #FEF3C7; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; }
+        th { padding: 10px 16px; text-align: left; font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; background: var(--gray-50); }
+        td { padding: 14px 16px; border-top: 1px solid var(--gray-100); font-size: 14px; }
+        tr:hover td { background: var(--gray-50); }
+        .empty-row { text-align: center; padding: 40px 16px; color: var(--gray-400); }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .tag-blue { background: var(--blue-light); color: var(--blue); }
+        .tag-green { background: var(--green-light); color: var(--green); }
+        .tag-orange { background: var(--orange-light); color: var(--orange); }
+        .tag-red { background: var(--red-light); color: var(--red); }
+
+        /* Amenity chips */
+        .amenity-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .amenity-chip {
+            background: var(--gray-100);
+            color: var(--gray-700);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .modal .subtitle { color: var(--gray-500); font-size: 14px; margin-bottom: 24px; }
+
+        .form-group { margin-bottom: 18px; position: relative; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+        .autocomplete-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 1000;
+            background: var(--white); border: 1px solid var(--gray-200); border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12); max-height: 200px; overflow-y: auto; margin-top: 2px;
+        }
+        .autocomplete-dropdown .ac-item {
+            padding: 10px 14px; cursor: pointer; font-size: 14px; border-bottom: 1px solid var(--gray-100);
+        }
+        .autocomplete-dropdown .ac-item:last-child { border-bottom: none; }
+        .autocomplete-dropdown .ac-item:hover { background: var(--gray-50); }
+        .autocomplete-dropdown .ac-item .ac-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: 8px;
+            font-size: 14px; font-family: inherit; transition: border-color 0.15s;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group .hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+
+        .modal-actions { display: flex; gap: 12px; margin-top: 28px; }
+        .modal-actions .btn { flex: 1; justify-content: center; padding: 12px; }
+
+        /* Availability Heatmap */
+        .avail-section { margin-top: 8px; margin-bottom: 18px; }
+        .avail-toggle {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+            padding: 10px 14px; background: var(--gray-50); border-radius: 10px;
+            border: 1px solid var(--gray-200); transition: all 0.15s;
+        }
+        .avail-toggle:hover { background: var(--blue-light); border-color: var(--blue); }
+        .avail-toggle svg { width: 18px; height: 18px; color: var(--blue); flex-shrink: 0; }
+        .avail-toggle .avail-toggle-text { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+        .avail-toggle .avail-toggle-sub { font-size: 11px; color: var(--gray-400); margin-left: auto; }
+        .avail-content { display: none; margin-top: 12px; }
+        .avail-content.open { display: block; }
+        .avail-grid {
+            display: grid; grid-template-columns: 70px repeat(4, 1fr); gap: 4px;
+            font-size: 12px;
+        }
+        .avail-grid .avail-header { font-weight: 600; color: var(--gray-500); text-align: center; padding: 6px 2px; font-size: 11px; }
+        .avail-grid .avail-day { font-weight: 600; color: var(--gray-700); padding: 8px 4px; display: flex; align-items: center; }
+        .avail-grid .avail-cell {
+            text-align: center; padding: 8px 4px; border-radius: 6px;
+            font-weight: 600; font-size: 13px; transition: all 0.15s; cursor: default;
+        }
+        .avail-cell.heat-0 { background: var(--gray-50); color: var(--gray-400); }
+        .avail-cell.heat-1 { background: #DBEAFE; color: #2563EB; }
+        .avail-cell.heat-2 { background: #BFDBFE; color: #1D4ED8; }
+        .avail-cell.heat-3 { background: #93C5FD; color: #1E40AF; }
+        .avail-cell.heat-4 { background: #60A5FA; color: #1E3A8A; }
+        .avail-cell.heat-5 { background: #3B82F6; color: white; }
+        .avail-best { margin-top: 10px; padding: 10px 14px; background: var(--blue-light); border-radius: 8px; font-size: 13px; color: var(--blue); }
+        .avail-best strong { font-weight: 700; }
+        .avail-note { font-size: 11px; color: var(--gray-400); margin-top: 6px; }
+
+        /* Amenity input */
+        .amenity-input-wrap { display: flex; gap: 8px; }
+        .amenity-input-wrap input { flex: 1; }
+        .amenity-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .amenity-tag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--blue-light); color: var(--blue);
+            padding: 4px 10px; border-radius: 6px; font-size: 13px;
+        }
+        .amenity-tag .remove { cursor: pointer; font-weight: 700; opacity: 0.6; }
+        .amenity-tag .remove:hover { opacity: 1; }
+
+        /* Page sections */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Status indicator */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-dot.online { background: var(--green); }
+        .status-dot.offline { background: var(--red); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: var(--gray-900); color: white;
+            padding: 14px 20px; border-radius: 10px;
+            font-size: 14px; font-weight: 500;
+            z-index: 2000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.error { background: var(--red); }
+        .toast.success { background: var(--green); }
+
+        /* Verification Gate */
+        .verify-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .verify-overlay.hidden { display: none; }
+        .verify-box {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .verify-box .logo-icon {
+            width: 64px; height: 64px; margin: 0 auto 20px;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .verify-box .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .verify-box h1 { font-size: 24px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; }
+        .verify-box .tagline { color: var(--gray-500); font-size: 14px; margin-bottom: 32px; }
+        .verify-box label { display: block; text-align: left; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; }
+        .verify-box input {
+            width: 100%; padding: 14px 16px; border: 2px solid var(--gray-200); border-radius: 12px;
+            font-size: 20px; font-family: inherit; text-align: center; letter-spacing: 8px;
+            font-weight: 600; color: var(--gray-900); transition: border-color 0.2s;
+        }
+        .verify-box input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(33,150,243,0.15); }
+        .verify-box input.error { border-color: var(--red); box-shadow: 0 0 0 4px rgba(239,68,68,0.15); }
+        .verify-box .verify-btn {
+            width: 100%; padding: 14px; margin-top: 20px; border: none; border-radius: 12px;
+            background: var(--blue); color: white; font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .verify-box .verify-btn:hover { background: var(--blue-hover); }
+        .verify-box .verify-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .verify-box .error-msg { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 20px; }
+        .verify-box .footer-text { color: var(--gray-400); font-size: 12px; margin-top: 24px; }
+    </style>
+</head>
+<body>
+    <!-- Verification Gate -->
+    <div class="verify-overlay" id="verify-overlay">
+        <div class="verify-box">
+            <div class="logo-icon"><img src="sort-logo.png" alt="Sort"></div>
+            <h1>Sort Admin</h1>
+            <p class="tagline">Enter your access code to continue</p>
+            <form id="verify-form" onsubmit="verifyCode(event)">
+                <label>Access Code</label>
+                <input type="text" id="verify-input" maxlength="7" placeholder="0000000" autocomplete="off" inputmode="numeric" autofocus>
+                <p class="error-msg" id="verify-error"></p>
+                <button type="submit" class="verify-btn" id="verify-btn">Verify & Enter</button>
+            </form>
+            <p class="footer-text">Contact your administrator for access</p>
+        </div>
+    </div>
+
+    <div class="app" id="admin-app" style="display:none;">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <h1>Sort <span>Admin</span></h1>
+                <p>Property Management</p>
+            </div>
+
+            <div class="nav-item active" data-page="dashboard">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </div>
+            <div class="nav-item" data-page="properties">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Properties
+            </div>
+            <div class="nav-item" data-page="events">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Events
+            </div>
+            <div class="nav-item" data-page="residents">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                Residents
+            </div>
+            <div class="nav-item" data-page="requests">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Property Requests <span id="pending-badge" style="background:#F59E0B;color:white;font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:auto;display:none">0</span>
+            </div>
+            <div class="nav-item" data-page="errors">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                Error Logs
+            </div>
+
+            <div style="position: absolute; bottom: 24px; left: 24px; right: 24px;">
+                <div style="font-size: 12px; color: var(--gray-400);">
+                    <span class="status-dot online" id="status-dot"></span>
+                    <span id="status-text">Connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="page-header">
+                    <div>
+                        <h2>Dashboard</h2>
+                        <p>Overview of your properties and community</p>
+                    </div>
+                </div>
+
+                <!-- Top-level Stats -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="icon blue">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        </div>
+                        <div class="number" id="stat-properties">0</div>
+                        <div class="label">Properties</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon green">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        </div>
+                        <div class="number" id="stat-residents">0</div>
+                        <div class="label">Total Users</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon orange">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                        <div class="number" id="stat-events">0</div>
+                        <div class="label">Events</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon red">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                        </div>
+                        <div class="number" id="stat-rsvps">0</div>
+                        <div class="label">Total RSVPs</div>
+                    </div>
+                </div>
+
+                <!-- Conversion Funnel -->
+                <div class="section-title">Conversion Funnel</div>
+                <div class="funnel">
+                    <div class="funnel-step">
+                        <div class="funnel-number" id="funnel-downloaded">0</div>
+                        <div class="funnel-label">Downloaded (Signed Up)</div>
+                    </div>
+                    <div class="funnel-arrow">→</div>
+                    <div class="funnel-step">
+                        <div class="funnel-number" id="funnel-onboarded">0</div>
+                        <div class="funnel-label">Onboarded (Completed Profile)</div>
+                        <div class="funnel-pct" id="funnel-pct-onboarded">0%</div>
+                    </div>
+                    <div class="funnel-arrow">→</div>
+                    <div class="funnel-step">
+                        <div class="funnel-number" id="funnel-activated">0</div>
+                        <div class="funnel-label">Activated (Event or 2+ Chats)</div>
+                        <div class="funnel-pct" id="funnel-pct-activated">0%</div>
+                    </div>
+                </div>
+
+                <!-- Engagement Metrics -->
+                <div class="section-title">Engagement</div>
+                <div class="stats-wide">
+                    <div class="stat-card">
+                        <div class="icon blue">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                        </div>
+                        <div class="number" id="stat-messages">0</div>
+                        <div class="label">Total Messages Sent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon green">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                        <div class="number" id="stat-introductions">0</div>
+                        <div class="label">Introductions Made</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon orange">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        </div>
+                        <div class="number" id="stat-poll-votes">0</div>
+                        <div class="label">Poll Votes</div>
+                    </div>
+                </div>
+                <div class="stats-wide">
+                    <div class="stat-card">
+                        <div class="icon blue">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                        </div>
+                        <div class="number" id="stat-org-follows">0</div>
+                        <div class="label">Org Follows</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon green">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        </div>
+                        <div class="number" id="stat-avg-interests">0</div>
+                        <div class="label">Avg Interests per User</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="icon orange">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        </div>
+                        <div class="number" id="stat-signups-7d">0</div>
+                        <div class="label">New Users (Last 7 Days)</div>
+                    </div>
+                </div>
+
+                <!-- Top Interests -->
+                <div class="stats" style="grid-template-columns: 1fr 1fr;">
+                    <div class="card" style="margin-bottom:0">
+                        <div class="card-header"><h3>Top Interests</h3></div>
+                        <div class="card-body" id="top-interests" style="padding:16px 24px">Loading...</div>
+                    </div>
+                    <div class="card" style="margin-bottom:0">
+                        <div class="card-header"><h3>Users by Building</h3></div>
+                        <div class="card-body" id="users-by-building" style="padding:16px 24px">Loading...</div>
+                    </div>
+                </div>
+
+                <div style="height:28px"></div>
+
+                <!-- Recent Events -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Upcoming Events</h3>
+                    </div>
+                    <table>
+                        <thead><tr><th>Event</th><th>Date</th><th>Location</th><th>RSVPs</th><th>Price</th></tr></thead>
+                        <tbody id="dashboard-events"><tr><td colspan="5" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+
+                <!-- Recent Residents -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Residents</h3>
+                    </div>
+                    <table>
+                        <thead><tr><th>Name</th><th>Building</th><th>Unit</th><th>Joined</th></tr></thead>
+                        <tbody id="dashboard-residents"><tr><td colspan="4" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Properties Page -->
+            <div class="page" id="page-properties">
+                <div class="page-header">
+                    <div>
+                        <h2>Properties</h2>
+                        <p>Manage your apartment complexes and amenities</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openPropertyModal()">+ Add Property</button>
+                </div>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Property</th><th>Address</th><th>Amenities</th><th>Residents</th><th>Actions</th></tr></thead>
+                        <tbody id="properties-table"><tr><td colspan="5" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Events Page -->
+            <div class="page" id="page-events">
+                <div class="page-header">
+                    <div>
+                        <h2>Events</h2>
+                        <p>Create and manage community events</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openEventModal()">+ Create Event</button>
+                </div>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Event</th><th>Date &amp; Time</th><th>Location</th><th>Price</th><th>RSVPs / Cap</th><th>Actions</th></tr></thead>
+                        <tbody id="events-table"><tr><td colspan="6" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Residents Page -->
+            <div class="page" id="page-residents">
+                <div class="page-header">
+                    <div>
+                        <h2>Residents</h2>
+                        <p>View and search all registered residents</p>
+                    </div>
+                    <input type="text" class="form-group" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:8px;font-size:14px;width:280px;margin:0" placeholder="Search residents..." id="search-residents" oninput="filterResidents()">
+                </div>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Name</th><th>Building</th><th>Unit</th><th>Interests</th><th>Joined</th><th>Actions</th></tr></thead>
+                        <tbody id="residents-table"><tr><td colspan="6" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Error Logs Page -->
+            <div class="page" id="page-errors">
+                <div class="page-header">
+                    <div>
+                        <h2>Error Logs</h2>
+                        <p>App crashes and errors reported automatically</p>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center">
+                        <select id="error-severity-filter" onchange="loadErrorLogs()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px">
+                            <option value="">All Severities</option>
+                            <option value="critical">Critical</option>
+                            <option value="error">Error</option>
+                            <option value="warning">Warning</option>
+                        </select>
+                        <select id="error-status-filter" onchange="loadErrorLogs()" style="padding:8px 12px;border:1px solid var(--gray-200);border-radius:8px;font-size:13px">
+                            <option value="unresolved">Unresolved</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="">All</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" onclick="loadErrorLogs()">Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Error Stats -->
+                <div class="stats-grid" style="margin-bottom:24px">
+                    <div class="stat-card">
+                        <div class="number" id="err-total-24h" style="color:var(--red)">0</div>
+                        <div class="label">Errors (24h)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="err-unresolved">0</div>
+                        <div class="label">Unresolved</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="err-critical" style="color:var(--red)">0</div>
+                        <div class="label">Critical</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="number" id="err-top-type">-</div>
+                        <div class="label">Most Common</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Time</th><th>User</th><th>Type</th><th>Message</th><th>Screen</th><th>Severity</th><th>Actions</th></tr></thead>
+                        <tbody id="errors-table"><tr><td colspan="7" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Property Requests Page -->
+            <div class="page" id="page-requests">
+                <div class="page-header">
+                    <div>
+                        <h2>Property Requests</h2>
+                        <p>Review and approve new property submissions from managers</p>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="loadPropertyRequests()">Refresh</button>
+                </div>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>Property</th><th>Address</th><th>Manager Email</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="requests-table"><tr><td colspan="6" class="empty-row">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Add/Edit Property Modal -->
+    <div class="modal-overlay" id="property-modal">
+        <div class="modal">
+            <h2 id="property-modal-title">Add Property</h2>
+            <p class="subtitle">Add your apartment complex details and amenities</p>
+            <form id="property-form" onsubmit="saveProperty(event)">
+                <input type="hidden" id="prop-id">
+                <div class="form-group">
+                    <label>Property Name *</label>
+                    <input type="text" id="prop-name" required placeholder="e.g. The Heights Apartments">
+                </div>
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="prop-address" placeholder="123 Main Street">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" id="prop-city" placeholder="Dallas">
+                    </div>
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" id="prop-state" placeholder="TX" maxlength="2">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="prop-description" placeholder="Describe your property..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="number" step="any" id="prop-lat" placeholder="32.7767">
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="number" step="any" id="prop-lng" placeholder="-96.7970">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Amenities</label>
+                    <div class="amenity-input-wrap">
+                        <input type="text" id="prop-amenity-input" placeholder="e.g. Pool, Gym, Dog Park...">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addPropertyAmenity()">Add</button>
+                    </div>
+                    <div class="amenity-tags" id="prop-amenity-tags"></div>
+                    <p class="hint">Press Enter or click Add to add each amenity</p>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('property-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="prop-submit-btn">Add Property</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create/Edit Event Modal -->
+    <div class="modal-overlay" id="event-modal">
+        <div class="modal">
+            <h2 id="event-modal-title">Create Event</h2>
+            <p class="subtitle">Schedule a new community event</p>
+            <form id="event-form" onsubmit="saveEvent(event)">
+                <input type="hidden" id="evt-id">
+                <div class="form-group">
+                    <label>Event Title *</label>
+                    <input type="text" id="evt-title" required placeholder="e.g. Pool Party, Movie Night">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="evt-description" placeholder="What's this event about?"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date *</label>
+                        <input type="date" id="evt-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Time *</label>
+                        <input type="text" id="evt-time" required placeholder="7:00 PM - 10:00 PM">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Location *</label>
+                    <input type="text" id="evt-location" required placeholder="e.g. Pool Area, Community Room">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Price ($)</label>
+                        <input type="number" step="0.01" min="0" id="evt-price" value="0" placeholder="0 = Free">
+                    </div>
+                    <div class="form-group">
+                        <label>Capacity</label>
+                        <input type="number" min="1" id="evt-capacity" value="50" placeholder="50">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Organizer</label>
+                    <select id="evt-organizer">
+                        <option value="">Select organizer (optional)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amenities / What's Included</label>
+                    <div class="amenity-input-wrap">
+                        <input type="text" id="evt-amenity-input" placeholder="e.g. Free food, DJ, Parking">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addEventAmenity()">Add</button>
+                    </div>
+                    <div class="amenity-tags" id="evt-amenity-tags"></div>
+                </div>
+
+                <!-- Resident Availability Insights -->
+                <div class="avail-section">
+                    <div class="avail-toggle" onclick="toggleAvailability()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="avail-toggle-text">Resident Availability</span>
+                        <span class="avail-toggle-sub" id="avail-count">Loading...</span>
+                    </div>
+                    <div class="avail-content" id="avail-content">
+                        <div class="avail-grid" id="avail-grid">
+                            <div></div>
+                            <div class="avail-header">5a–9a</div>
+                            <div class="avail-header">9a–2p</div>
+                            <div class="avail-header">2p–5p</div>
+                            <div class="avail-header">5p–10p</div>
+                        </div>
+                        <div class="avail-best" id="avail-best" style="display:none"></div>
+                        <p class="avail-note">Based on availability submitted by residents in the app</p>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('event-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="evt-submit-btn">Create Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // =============================================
+        // VERIFICATION GATE
+        // =============================================
+        const ADMIN_CODE_HASH = '8a9bcf3e'; // lightweight hash of the access code
+        function simpleHash(str) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) {
+                h = ((h << 5) - h) + str.charCodeAt(i);
+                h |= 0;
+            }
+            return (h >>> 0).toString(16);
+        }
+
+        function verifyCode(e) {
+            e.preventDefault();
+            var input = document.getElementById('verify-input');
+            var errorEl = document.getElementById('verify-error');
+            var code = input.value.replace(/\s/g, '');
+
+            if (!code) {
+                errorEl.textContent = 'Please enter the access code';
+                input.classList.add('error');
+                return;
+            }
+
+            // Check code
+            if (code === '2580462') {
+                // Success — save session and show admin
+                sessionStorage.setItem('sort_admin_verified', 'true');
+                document.getElementById('verify-overlay').classList.add('hidden');
+                document.getElementById('admin-app').style.display = 'flex';
+                init();
+            } else {
+                errorEl.textContent = 'Invalid access code. Please try again.';
+                input.classList.add('error');
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        // Check if already verified this session
+        if (sessionStorage.getItem('sort_admin_verified') === 'true') {
+            document.getElementById('verify-overlay').classList.add('hidden');
+            document.getElementById('admin-app').style.display = 'flex';
+        }
+
+        // Remove error style on input
+        document.getElementById('verify-input').addEventListener('input', function() {
+            this.classList.remove('error');
+            document.getElementById('verify-error').textContent = '';
+        });
+    </script>
+
+    <script>
+        // =============================================
+        // SUPABASE CONFIG
+        // =============================================
+        const SUPABASE_URL = 'https://tjnlzdrxhivnbgssvqqy.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqbmx6ZHJ4aGl2bmJnc3N2cXF5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDI2Njk2MCwiZXhwIjoyMDg1ODQyOTYwfQ.H6llupmgalLMVPH_ir_ZS-Nt0lP9TIOnuEHcw5M5wj4';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // =============================================
+        // STATE
+        // =============================================
+        let allResidents = [];
+        let propertyAmenities = [];
+        let eventAmenities = [];
+        let organizations = [];
+
+        // =============================================
+        // NAVIGATION
+        // =============================================
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                item.classList.add('active');
+                document.getElementById('page-' + item.dataset.page).classList.add('active');
+            });
+        });
+
+        // =============================================
+        // TOAST
+        // =============================================
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        // =============================================
+        // MODAL HELPERS
+        // =============================================
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+        });
+
+        // Amenity input: Enter key support
+        document.getElementById('prop-amenity-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); addPropertyAmenity(); }
+        });
+        document.getElementById('evt-amenity-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); addEventAmenity(); }
+        });
+
+        // =============================================
+        // PROPERTY AMENITIES
+        // =============================================
+        function addPropertyAmenity() {
+            const input = document.getElementById('prop-amenity-input');
+            const val = input.value.trim();
+            if (val && !propertyAmenities.includes(val)) {
+                propertyAmenities.push(val);
+                renderAmenityTags('prop-amenity-tags', propertyAmenities, 'property');
+            }
+            input.value = '';
+            input.focus();
+        }
+
+        function addEventAmenity() {
+            const input = document.getElementById('evt-amenity-input');
+            const val = input.value.trim();
+            if (val && !eventAmenities.includes(val)) {
+                eventAmenities.push(val);
+                renderAmenityTags('evt-amenity-tags', eventAmenities, 'event');
+            }
+            input.value = '';
+            input.focus();
+        }
+
+        function removeAmenity(type, index) {
+            if (type === 'property') {
+                propertyAmenities.splice(index, 1);
+                renderAmenityTags('prop-amenity-tags', propertyAmenities, 'property');
+            } else {
+                eventAmenities.splice(index, 1);
+                renderAmenityTags('evt-amenity-tags', eventAmenities, 'event');
+            }
+        }
+
+        function renderAmenityTags(containerId, list, type) {
+            document.getElementById(containerId).innerHTML = list.map((a, i) =>
+                `<span class="amenity-tag">${a} <span class="remove" onclick="removeAmenity('${type}', ${i})">×</span></span>`
+            ).join('');
+        }
+
+        // =============================================
+        // PROPERTY CRUD
+        // =============================================
+        function openPropertyModal(property = null) {
+            propertyAmenities = property?.amenities || [];
+            document.getElementById('property-modal-title').textContent = property ? 'Edit Property' : 'Add Property';
+            document.getElementById('prop-submit-btn').textContent = property ? 'Save Changes' : 'Add Property';
+            document.getElementById('prop-id').value = property?.id || '';
+            document.getElementById('prop-name').value = property?.name || '';
+            document.getElementById('prop-address').value = property?.address || '';
+            document.getElementById('prop-city').value = property?.city || '';
+            document.getElementById('prop-state').value = property?.state || '';
+            document.getElementById('prop-description').value = property?.description || '';
+            document.getElementById('prop-lat').value = property?.latitude || '';
+            document.getElementById('prop-lng').value = property?.longitude || '';
+            renderAmenityTags('prop-amenity-tags', propertyAmenities, 'property');
+            document.getElementById('property-modal').classList.add('active');
+        }
+
+        async function saveProperty(e) {
+            e.preventDefault();
+            const id = document.getElementById('prop-id').value;
+            const data = {
+                name: document.getElementById('prop-name').value,
+                address: document.getElementById('prop-address').value || null,
+                city: document.getElementById('prop-city').value || null,
+                state: document.getElementById('prop-state').value || null,
+                description: document.getElementById('prop-description').value || null,
+                latitude: parseFloat(document.getElementById('prop-lat').value) || null,
+                longitude: parseFloat(document.getElementById('prop-lng').value) || null,
+                amenities: propertyAmenities,
+                updated_at: new Date().toISOString(),
+            };
+
+            try {
+                if (id) {
+                    const { error } = await db.from('properties').update(data).eq('id', id);
+                    if (error) throw error;
+                    showToast('Property updated!', 'success');
+                } else {
+                    const { error } = await db.from('properties').insert(data);
+                    if (error) throw error;
+                    showToast('Property added!', 'success');
+                }
+                closeModal('property-modal');
+                document.getElementById('property-form').reset();
+                loadProperties();
+                loadStats();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteProperty(id, name) {
+            if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+            try {
+                const { error } = await db.from('properties').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Property deleted', 'success');
+                loadProperties();
+                loadStats();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        // =============================================
+        // EVENT CRUD
+        // =============================================
+        function openEventModal(evt = null) {
+            eventAmenities = evt?.amenities || [];
+            document.getElementById('event-modal-title').textContent = evt ? 'Edit Event' : 'Create Event';
+            document.getElementById('evt-submit-btn').textContent = evt ? 'Save Changes' : 'Create Event';
+            document.getElementById('evt-id').value = evt?.id || '';
+            document.getElementById('evt-title').value = evt?.title || '';
+            document.getElementById('evt-description').value = evt?.description || '';
+            document.getElementById('evt-date').value = evt?.date || '';
+            document.getElementById('evt-time').value = evt?.time || '';
+            document.getElementById('evt-location').value = evt?.location || '';
+            document.getElementById('evt-price').value = evt?.price ?? 0;
+            document.getElementById('evt-capacity').value = evt?.capacity ?? 50;
+            document.getElementById('evt-organizer').value = evt?.organizer_id || '';
+            renderAmenityTags('evt-amenity-tags', eventAmenities, 'event');
+
+            // Populate organizer dropdown
+            const select = document.getElementById('evt-organizer');
+            select.innerHTML = '<option value="">Select organizer (optional)</option>' +
+                organizations.map(o => `<option value="${o.id}" ${evt?.organizer_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('');
+
+            // Reset availability section
+            availabilityData = null;
+            const availContent = document.getElementById('avail-content');
+            if (availContent) availContent.classList.remove('open');
+            document.getElementById('avail-count').textContent = 'Loading...';
+
+            document.getElementById('event-modal').classList.add('active');
+        }
+
+        async function saveEvent(e) {
+            e.preventDefault();
+            const id = document.getElementById('evt-id').value;
+            const organizerId = document.getElementById('evt-organizer').value || null;
+            const orgName = organizerId ? organizations.find(o => o.id === organizerId)?.name : null;
+
+            const data = {
+                title: document.getElementById('evt-title').value,
+                description: document.getElementById('evt-description').value || null,
+                date: document.getElementById('evt-date').value,
+                time: document.getElementById('evt-time').value,
+                location: document.getElementById('evt-location').value,
+                price: parseFloat(document.getElementById('evt-price').value) || 0,
+                capacity: parseInt(document.getElementById('evt-capacity').value) || 50,
+                organizer_id: organizerId,
+                organizer_name: orgName,
+                amenities: eventAmenities,
+                updated_at: new Date().toISOString(),
+            };
+
+            try {
+                if (id) {
+                    const { error } = await db.from('events').update(data).eq('id', id);
+                    if (error) throw error;
+                    showToast('Event updated!', 'success');
+                } else {
+                    const { error } = await db.from('events').insert(data);
+                    if (error) throw error;
+                    showToast('Event created!', 'success');
+                }
+                closeModal('event-modal');
+                document.getElementById('event-form').reset();
+                loadEvents();
+                loadStats();
+                loadDashboardEvents();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteEvent(id, title) {
+            if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+            try {
+                const { error } = await db.from('events').delete().eq('id', id);
+                if (error) throw error;
+                showToast('Event deleted', 'success');
+                loadEvents();
+                loadStats();
+                loadDashboardEvents();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        // =============================================
+        // DATA LOADING
+        // =============================================
+        async function loadStats() {
+            const [{ data: props }, { data: users }, { data: events }, { data: att }] = await Promise.all([
+                db.from('properties').select('id'),
+                db.from('users').select('id'),
+                db.from('events').select('id'),
+                db.from('event_attendees').select('id'),
+            ]);
+            document.getElementById('stat-properties').textContent = props?.length || 0;
+            document.getElementById('stat-residents').textContent = users?.length || 0;
+            document.getElementById('stat-events').textContent = events?.length || 0;
+            document.getElementById('stat-rsvps').textContent = att?.length || 0;
+        }
+
+        async function loadMetrics() {
+            try {
+                const [
+                    { data: users },
+                    { data: attendees },
+                    { data: messages },
+                    { data: introductions },
+                    { data: pollVotes },
+                    { data: orgFollows },
+                ] = await Promise.all([
+                    db.from('users').select('id, building_name, unit_number, interests, created_at, name'),
+                    db.from('event_attendees').select('user_id'),
+                    db.from('chat_messages').select('sender_id'),
+                    db.from('introductions').select('id'),
+                    db.from('poll_votes').select('id'),
+                    db.from('organization_followers').select('id'),
+                ]);
+
+                const allUsers = users || [];
+                const totalDownloaded = allUsers.length;
+
+                // Onboarded = has building_name set (completed onboarding)
+                const onboarded = allUsers.filter(u => u.building_name && u.building_name.trim() !== '');
+                const totalOnboarded = onboarded.length;
+
+                // Activated = onboarded + (joined event OR sent 2+ messages)
+                const eventUserIds = new Set((attendees || []).map(a => a.user_id));
+                const msgCounts = {};
+                (messages || []).forEach(m => {
+                    if (m.sender_id) msgCounts[m.sender_id] = (msgCounts[m.sender_id] || 0) + 1;
+                });
+                const twoMsgUserIds = new Set(Object.entries(msgCounts).filter(([_, c]) => c >= 2).map(([id]) => id));
+                const onboardedIds = new Set(onboarded.map(u => u.id));
+                const activated = [...onboardedIds].filter(id => eventUserIds.has(id) || twoMsgUserIds.has(id));
+                const totalActivated = activated.length;
+
+                // Funnel numbers
+                document.getElementById('funnel-downloaded').textContent = totalDownloaded;
+                document.getElementById('funnel-onboarded').textContent = totalOnboarded;
+                document.getElementById('funnel-activated').textContent = totalActivated;
+
+                // Funnel percentages
+                const pctOnboarded = totalDownloaded > 0 ? Math.round((totalOnboarded / totalDownloaded) * 100) : 0;
+                const pctActivated = totalOnboarded > 0 ? Math.round((totalActivated / totalOnboarded) * 100) : 0;
+
+                const pctOnEl = document.getElementById('funnel-pct-onboarded');
+                pctOnEl.textContent = pctOnboarded + '%';
+                pctOnEl.className = 'funnel-pct ' + (pctOnboarded >= 60 ? 'pct-good' : pctOnboarded >= 30 ? 'pct-ok' : 'pct-bad');
+
+                const pctActEl = document.getElementById('funnel-pct-activated');
+                pctActEl.textContent = pctActivated + '%';
+                pctActEl.className = 'funnel-pct ' + (pctActivated >= 40 ? 'pct-good' : pctActivated >= 20 ? 'pct-ok' : 'pct-bad');
+
+                // Engagement stats
+                document.getElementById('stat-messages').textContent = (messages || []).length;
+                document.getElementById('stat-introductions').textContent = (introductions || []).length;
+                document.getElementById('stat-poll-votes').textContent = (pollVotes || []).length;
+                document.getElementById('stat-org-follows').textContent = (orgFollows || []).length;
+
+                // Avg interests per user
+                const totalInterests = allUsers.reduce((sum, u) => sum + (u.interests?.length || 0), 0);
+                const avgInterests = allUsers.length > 0 ? (totalInterests / allUsers.length).toFixed(1) : '0';
+                document.getElementById('stat-avg-interests').textContent = avgInterests;
+
+                // Signups in last 7 days
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const recentSignups = allUsers.filter(u => new Date(u.created_at) >= sevenDaysAgo).length;
+                document.getElementById('stat-signups-7d').textContent = recentSignups;
+
+                // Top interests
+                const interestCounts = {};
+                allUsers.forEach(u => {
+                    (u.interests || []).forEach(i => {
+                        interestCounts[i] = (interestCounts[i] || 0) + 1;
+                    });
+                });
+                const topInterests = Object.entries(interestCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8);
+
+                document.getElementById('top-interests').innerHTML = topInterests.length
+                    ? topInterests.map(([name, count]) => {
+                        const pct = Math.round((count / allUsers.length) * 100);
+                        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                            <span style="flex:1;font-size:13px;font-weight:500">${name}</span>
+                            <div style="width:120px;height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden">
+                                <div style="width:${pct}%;height:100%;background:var(--blue);border-radius:3px"></div>
+                            </div>
+                            <span style="font-size:12px;color:var(--gray-500);min-width:40px;text-align:right">${count} (${pct}%)</span>
+                        </div>`;
+                    }).join('')
+                    : '<p style="color:var(--gray-400);font-size:13px">No interest data yet</p>';
+
+                // Users by building
+                const buildingCounts = {};
+                onboarded.forEach(u => {
+                    buildingCounts[u.building_name] = (buildingCounts[u.building_name] || 0) + 1;
+                });
+                const topBuildings = Object.entries(buildingCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8);
+
+                document.getElementById('users-by-building').innerHTML = topBuildings.length
+                    ? topBuildings.map(([name, count]) => {
+                        const pct = Math.round((count / totalOnboarded) * 100);
+                        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                            <span style="flex:1;font-size:13px;font-weight:500">${name}</span>
+                            <div style="width:120px;height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden">
+                                <div style="width:${pct}%;height:100%;background:var(--green);border-radius:3px"></div>
+                            </div>
+                            <span style="font-size:12px;color:var(--gray-500);min-width:40px;text-align:right">${count} (${pct}%)</span>
+                        </div>`;
+                    }).join('')
+                    : '<p style="color:var(--gray-400);font-size:13px">No building data yet</p>';
+
+            } catch (err) {
+                console.error('Metrics error:', err);
+            }
+        }
+
+        async function loadProperties() {
+            const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+            const { data: users } = await db.from('users').select('building_name');
+
+            const counts = {};
+            users?.forEach(u => { if (u.building_name) counts[u.building_name] = (counts[u.building_name] || 0) + 1; });
+
+            const tbody = document.getElementById('properties-table');
+            if (!data?.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No properties yet. Click "+ Add Property" to get started.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(p => `
+                <tr>
+                    <td>
+                        <strong>${p.name}</strong>
+                        ${p.description ? `<br><span style="font-size:12px;color:var(--gray-500)">${p.description.substring(0, 60)}${p.description.length > 60 ? '...' : ''}</span>` : ''}
+                    </td>
+                    <td>${p.address || '-'}<br><span style="font-size:12px;color:var(--gray-500)">${[p.city, p.state].filter(Boolean).join(', ') || ''}</span></td>
+                    <td>
+                        <div class="amenity-chips">
+                            ${(p.amenities || []).slice(0, 3).map(a => `<span class="amenity-chip">${a}</span>`).join('')}
+                            ${(p.amenities || []).length > 3 ? `<span class="amenity-chip">+${p.amenities.length - 3}</span>` : ''}
+                        </div>
+                    </td>
+                    <td><span class="tag tag-blue">${counts[p.name] || 0}</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick='openPropertyModal(${JSON.stringify(p).replace(/'/g, "\\'")})'>Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProperty('${p.id}', '${p.name.replace(/'/g, "\\'")}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadEvents() {
+            const { data, error } = await db.from('events').select('*').order('date', { ascending: true });
+            const { data: att } = await db.from('event_attendees').select('event_id');
+            const counts = {};
+            att?.forEach(a => { counts[a.event_id] = (counts[a.event_id] || 0) + 1; });
+
+            const tbody = document.getElementById('events-table');
+            if (!data?.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No events yet. Click "+ Create Event" to get started.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.map(e => {
+                const isPast = new Date(e.date) < new Date().setHours(0,0,0,0);
+                return `
+                <tr style="${isPast ? 'opacity:0.5' : ''}">
+                    <td>
+                        <strong>${e.title}</strong>
+                        ${e.organizer_name ? `<br><span style="font-size:12px;color:var(--gray-500)">${e.organizer_name}</span>` : ''}
+                    </td>
+                    <td>${new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}<br><span style="font-size:12px;color:var(--gray-500)">${e.time}</span></td>
+                    <td>${e.location}</td>
+                    <td>${e.price > 0 ? '$' + parseFloat(e.price).toFixed(0) : '<span class="tag tag-green">Free</span>'}</td>
+                    <td><span class="tag tag-orange">${counts[e.id] || 0} / ${e.capacity}</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick='openEventModal(${JSON.stringify(e).replace(/'/g, "\\'")})'>Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteEvent('${e.id}', '${e.title.replace(/'/g, "\\'")}')">Delete</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function loadDashboardEvents() {
+            const { data } = await db.from('events').select('*').gte('date', new Date().toISOString().split('T')[0]).order('date', { ascending: true }).limit(5);
+            const { data: att } = await db.from('event_attendees').select('event_id');
+            const counts = {};
+            att?.forEach(a => { counts[a.event_id] = (counts[a.event_id] || 0) + 1; });
+
+            const tbody = document.getElementById('dashboard-events');
+            if (!data?.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-row">No upcoming events</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(e => `
+                <tr>
+                    <td><strong>${e.title}</strong></td>
+                    <td>${new Date(e.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                    <td>${e.location}</td>
+                    <td><span class="tag tag-orange">${counts[e.id] || 0} / ${e.capacity}</span></td>
+                    <td>${e.price > 0 ? '$' + parseFloat(e.price).toFixed(0) : '<span class="tag tag-green">Free</span>'}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadResidents() {
+            const { data } = await db.from('users').select('*').order('created_at', { ascending: false });
+            allResidents = data || [];
+            renderResidents(allResidents);
+
+            // Dashboard recent residents
+            const tbody = document.getElementById('dashboard-residents');
+            const recent = (data || []).slice(0, 5);
+            if (!recent.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-row">No residents yet</td></tr>';
+                return;
+            }
+            tbody.innerHTML = recent.map(r => `
+                <tr>
+                    <td><strong>${r.name || 'Unknown'}</strong></td>
+                    <td>${r.building_name || '-'}</td>
+                    <td>${r.unit_number || '-'}</td>
+                    <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderResidents(list) {
+            const tbody = document.getElementById('residents-table');
+            if (!list?.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No residents found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(r => {
+                const isBlocked = r.is_blocked === true;
+                const blockedBadge = isBlocked ? '<span class="tag" style="background:#FEE2E2;color:#DC2626;margin-left:6px">BLOCKED</span>' : '';
+                return `
+                <tr style="${isBlocked ? 'opacity:0.5' : ''}">
+                    <td><strong>${r.name || 'Unknown'}</strong>${blockedBadge}<br><span style="font-size:11px;color:var(--gray-400)">${r.phone_number || ''}</span></td>
+                    <td>${r.building_name || '-'}</td>
+                    <td>${r.unit_number || '-'}</td>
+                    <td>
+                        <div class="amenity-chips">
+                            ${(r.interests || []).slice(0, 3).map(i => `<span class="amenity-chip">${i}</span>`).join('')}
+                            ${(r.interests || []).length > 3 ? `<span class="amenity-chip">+${r.interests.length - 3}</span>` : ''}
+                        </div>
+                    </td>
+                    <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                    <td style="white-space:nowrap">
+                        <button class="btn ${isBlocked ? 'btn-secondary' : 'btn-warning'} btn-sm" onclick="${isBlocked ? `unblockResident('${r.id}', '${(r.name || 'Unknown').replace(/'/g, "\\'")}')` : `blockResident('${r.id}', '${(r.name || 'Unknown').replace(/'/g, "\\'")}')` }">${isBlocked ? 'Unblock' : 'Block'}</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteResident('${r.id}', '${(r.name || 'Unknown').replace(/'/g, "\\'")}')">Delete</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function blockResident(id, name) {
+            if (!confirm('Block "' + name + '"? Their account will become invisible, they won\'t be able to use the app, and they can\'t sign in with their phone number anymore.')) return;
+            try {
+                const { error } = await db.from('users').update({ is_blocked: true }).eq('id', id);
+                if (error) throw error;
+                showToast(name + ' has been blocked', 'success');
+                loadResidents();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        async function unblockResident(id, name) {
+            if (!confirm('Unblock "' + name + '"? They will be able to sign in and use the app again.')) return;
+            try {
+                const { error } = await db.from('users').update({ is_blocked: false }).eq('id', id);
+                if (error) throw error;
+                showToast(name + ' has been unblocked', 'success');
+                loadResidents();
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteResident(id, name) {
+            if (!confirm('⚠️ PERMANENTLY DELETE "' + name + '"?\n\nThis will delete ALL their data including:\n- Profile & account\n- Messages\n- Event RSVPs\n- Organization follows\n- Poll votes\n- Introductions\n\nThis action CANNOT be undone.')) return;
+            if (!confirm('Are you absolutely sure you want to permanently delete "' + name + '"? Type OK to confirm.')) return;
+            try {
+                // Delete all related data first, then the user
+                const deletions = [
+                    db.from('chat_messages').delete().eq('sender_id', id),
+                    db.from('chat_participants').delete().eq('user_id', id),
+                    db.from('event_attendees').delete().eq('user_id', id),
+                    db.from('event_bookmarks').delete().eq('user_id', id),
+                    db.from('organization_followers').delete().eq('user_id', id),
+                    db.from('organization_reviews').delete().eq('user_id', id),
+                    db.from('poll_votes').delete().eq('user_id', id),
+                    db.from('introductions').delete().eq('requester_id', id),
+                    db.from('introductions').delete().eq('target_id', id),
+                    db.from('notifications').delete().eq('user_id', id),
+                    db.from('notifications').delete().eq('actor_id', id),
+                    db.from('live_status_joins').delete().eq('user_id', id),
+                    db.from('user_category_interests').delete().eq('user_id', id),
+                    db.from('availability_slots').delete().eq('user_id', id),
+                    db.from('event_tickets').delete().eq('user_id', id),
+                    db.from('activity_wishes').delete().eq('user_id', id),
+                    db.from('resident_event_recommendations').delete().eq('user_id', id),
+                    db.from('inventory_items').delete().eq('owner_id', id),
+                    db.from('account_deletion_feedback').delete().eq('user_id', id),
+                    db.from('vote_likes').delete().eq('user_id', id),
+                    db.from('question_submissions').delete().eq('user_id', id),
+                ];
+
+                // Run all deletions in parallel, ignore errors for tables that may not have this user
+                const results = await Promise.allSettled(deletions);
+                results.forEach((r, i) => {
+                    if (r.status === 'rejected') console.warn('Delete step failed (non-critical):', r.reason);
+                });
+
+                // Finally delete the user record itself
+                const { error } = await db.from('users').delete().eq('id', id);
+                if (error) throw error;
+
+                showToast(name + ' and all their data have been permanently deleted', 'success');
+                loadResidents();
+                loadStats();
+                loadMetrics();
+            } catch (err) {
+                showToast('Error deleting user: ' + err.message, 'error');
+            }
+        }
+
+        function filterResidents() {
+            const q = document.getElementById('search-residents').value.toLowerCase();
+            const filtered = allResidents.filter(r =>
+                r.name?.toLowerCase().includes(q) ||
+                r.building_name?.toLowerCase().includes(q) ||
+                r.unit_number?.toLowerCase().includes(q)
+            );
+            renderResidents(filtered);
+        }
+
+        async function loadOrganizations() {
+            const { data } = await db.from('organizations').select('*');
+            organizations = data || [];
+        }
+
+        // =============================================
+        // ERROR LOGS
+        // =============================================
+        async function loadErrorLogs() {
+            const severityFilter = document.getElementById('error-severity-filter')?.value || '';
+            const statusFilter = document.getElementById('error-status-filter')?.value || '';
+
+            try {
+                let query = db.from('app_errors').select('*').order('created_at', { ascending: false }).limit(100);
+                if (severityFilter) query = query.eq('severity', severityFilter);
+                if (statusFilter === 'unresolved') query = query.eq('is_resolved', false);
+                else if (statusFilter === 'resolved') query = query.eq('is_resolved', true);
+
+                const { data, error } = await query;
+                if (error) { console.warn('Error logs table may not exist yet:', error.message); return; }
+                const errors = data || [];
+
+                // Stats
+                const now = new Date();
+                const h24 = new Date(now - 24 * 60 * 60 * 1000);
+                const recent = errors.filter(e => new Date(e.created_at) > h24);
+                const unresolved = errors.filter(e => !e.is_resolved);
+                const critical = errors.filter(e => e.severity === 'critical' && !e.is_resolved);
+
+                document.getElementById('err-total-24h').textContent = recent.length;
+                document.getElementById('err-unresolved').textContent = unresolved.length;
+                document.getElementById('err-critical').textContent = critical.length;
+
+                // Most common error type
+                const typeCounts = {};
+                errors.forEach(e => { typeCounts[e.error_type || 'unknown'] = (typeCounts[e.error_type || 'unknown'] || 0) + 1; });
+                const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+                document.getElementById('err-top-type').textContent = topType ? topType[0] : '-';
+
+                // Render table
+                const tbody = document.getElementById('errors-table');
+                if (!errors.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No errors logged yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = errors.map(e => {
+                    const time = new Date(e.created_at);
+                    const timeStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                    time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                    const msg = (e.error_message || '').substring(0, 80) + ((e.error_message || '').length > 80 ? '...' : '');
+                    const sevColor = e.severity === 'critical' ? 'var(--red)' : e.severity === 'warning' ? 'var(--orange)' : 'var(--gray-700)';
+                    const resolvedBadge = e.is_resolved
+                        ? '<span style="color:var(--blue);font-size:11px;font-weight:600">Resolved</span>'
+                        : '<button class="btn btn-secondary btn-sm" onclick="resolveError(\'' + e.id + '\')">Resolve</button>';
+
+                    return '<tr style="cursor:pointer" onclick="showErrorDetail(\'' + e.id + '\')">' +
+                        '<td style="white-space:nowrap;font-size:12px">' + timeStr + '</td>' +
+                        '<td>' + (e.user_name || '<span style=color:var(--gray-400)>Unknown</span>') + '</td>' +
+                        '<td><span class="amenity-chip">' + (e.error_type || 'unknown') + '</span></td>' +
+                        '<td style="font-size:13px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (e.error_message || '').replace(/"/g, '&quot;') + '">' + msg + '</td>' +
+                        '<td>' + (e.screen || '-') + '</td>' +
+                        '<td style="color:' + sevColor + ';font-weight:600;font-size:12px;text-transform:uppercase">' + (e.severity || 'error') + '</td>' +
+                        '<td onclick="event.stopPropagation()">' + resolvedBadge + '</td>' +
+                        '</tr>';
+                }).join('');
+            } catch (err) {
+                console.warn('loadErrorLogs failed:', err);
+            }
+        }
+
+        async function resolveError(id) {
+            await db.from('app_errors').update({ is_resolved: true }).eq('id', id);
+            showToast('Error marked as resolved', 'success');
+            loadErrorLogs();
+        }
+
+        function showErrorDetail(id) {
+            // Fetch and show full error detail in an alert (simple approach)
+            db.from('app_errors').select('*').eq('id', id).single().then(({ data }) => {
+                if (!data) return;
+                const detail = 'Error: ' + data.error_message +
+                    '\n\nType: ' + (data.error_type || '-') +
+                    '\nSeverity: ' + (data.severity || '-') +
+                    '\nScreen: ' + (data.screen || '-') +
+                    '\nUser: ' + (data.user_name || 'Unknown') +
+                    '\nDevice: ' + (data.device_info || '-') +
+                    '\nVersion: ' + (data.app_version || '-') +
+                    '\nTime: ' + new Date(data.created_at).toLocaleString() +
+                    '\n\nStack Trace:\n' + (data.stack_trace || 'None');
+                alert(detail);
+            });
+        }
+
+        // =============================================
+        // RESIDENT AVAILABILITY
+        // =============================================
+        let availabilityData = null; // cached
+
+        function toggleAvailability() {
+            const content = document.getElementById('avail-content');
+            content.classList.toggle('open');
+            if (content.classList.contains('open') && !availabilityData) {
+                loadAvailabilityData();
+            }
+        }
+
+        async function loadAvailabilityData() {
+            try {
+                // Try structured slots first
+                const { data: slots, error: slotsErr } = await db.from('availability_slots').select('day_of_week, start_time, end_time');
+
+                const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const dayNamesFull = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                const timeSlots = [
+                    { label: '5a–9a', start: '05:00', end: '09:00' },
+                    { label: '9a–2p', start: '09:00', end: '14:00' },
+                    { label: '2p–5p', start: '14:00', end: '17:00' },
+                    { label: '5p–10p', start: '17:00', end: '22:00' },
+                ];
+
+                // Build counts grid: counts[dayOfWeek][timeSlotIndex] = number of residents
+                const counts = {};
+                for (let d = 0; d < 7; d++) { counts[d] = [0, 0, 0, 0]; }
+
+                let totalResidents = 0;
+
+                if (!slotsErr && slots && slots.length > 0) {
+                    // Use structured data
+                    const uniqueUsers = new Set();
+                    // We don't have user_id in the select, count by slots
+                    slots.forEach(s => {
+                        const d = s.day_of_week; // 0=Mon ... 6=Sun
+                        for (let t = 0; t < timeSlots.length; t++) {
+                            if (s.start_time === timeSlots[t].start && s.end_time === timeSlots[t].end) {
+                                counts[d][t]++;
+                            }
+                        }
+                    });
+
+                    // Get unique user count
+                    const { data: slotUsers } = await db.from('availability_slots').select('user_id');
+                    if (slotUsers) {
+                        const ids = new Set(slotUsers.map(s => s.user_id));
+                        totalResidents = ids.size;
+                    }
+                } else {
+                    // Fallback: parse text availability from users table
+                    const { data: users } = await db.from('users').select('availability');
+                    if (users) {
+                        const textDayMap = {
+                            'sunday': 6, 'monday': 0, 'tuesday': 1,
+                            'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5
+                        };
+                        const textTimeMap = {
+                            '5am - 9am': 0, '5am-9am': 0,
+                            '9am - 2pm': 1, '9am-2pm': 1,
+                            '2pm - 5pm': 2, '2pm-5pm': 2,
+                            '5pm - 10pm': 3, '5pm-10pm': 3,
+                        };
+
+                        users.forEach(u => {
+                            if (!u.availability) return;
+                            totalResidents++;
+                            // Parse format: "Sunday: 5am - 9am, 9am - 2pm; Monday: 2pm - 5pm"
+                            const parts = u.availability.split(';');
+                            parts.forEach(part => {
+                                const colonIdx = part.indexOf(':');
+                                if (colonIdx < 0) return;
+                                const dayStr = part.substring(0, colonIdx).trim().toLowerCase();
+                                const dayIdx = textDayMap[dayStr];
+                                if (dayIdx === undefined) return;
+                                const ranges = part.substring(colonIdx + 1).split(',');
+                                ranges.forEach(range => {
+                                    const r = range.trim();
+                                    const tIdx = textTimeMap[r];
+                                    if (tIdx !== undefined) counts[dayIdx][tIdx]++;
+                                });
+                            });
+                        });
+                    }
+                }
+
+                // Find max for heat scale
+                let maxCount = 0;
+                for (let d = 0; d < 7; d++) {
+                    for (let t = 0; t < 4; t++) {
+                        if (counts[d][t] > maxCount) maxCount = counts[d][t];
+                    }
+                }
+
+                // Render grid
+                const grid = document.getElementById('avail-grid');
+                // Clear existing day rows
+                grid.innerHTML = '<div></div>' +
+                    timeSlots.map(t => '<div class="avail-header">' + t.label + '</div>').join('');
+
+                // Display order: Sun first, then Mon-Sat
+                const displayOrder = [6, 0, 1, 2, 3, 4, 5];
+                const displayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+                let bestDay = -1, bestTime = -1, bestCount = 0;
+
+                displayOrder.forEach((d, di) => {
+                    grid.innerHTML += '<div class="avail-day">' + displayNames[di] + '</div>';
+                    for (let t = 0; t < 4; t++) {
+                        const c = counts[d][t];
+                        const heat = maxCount === 0 ? 0 : Math.min(5, Math.ceil((c / maxCount) * 5));
+                        grid.innerHTML += '<div class="avail-cell heat-' + heat + '" title="' + c + ' resident' + (c !== 1 ? 's' : '') + '">' + c + '</div>';
+                        if (c > bestCount) { bestCount = c; bestDay = di; bestTime = t; }
+                    }
+                });
+
+                // Best time recommendation
+                const bestEl = document.getElementById('avail-best');
+                if (bestCount > 0) {
+                    const bestDayFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][bestDay];
+                    const bestTimeLabel = timeSlots[bestTime].label;
+                    bestEl.innerHTML = 'Best time: <strong>' + bestDayFull + ' ' + bestTimeLabel + '</strong> (' + bestCount + ' resident' + (bestCount !== 1 ? 's' : '') + ' available)';
+                    bestEl.style.display = 'block';
+                }
+
+                // Update count label
+                document.getElementById('avail-count').textContent = totalResidents + ' resident' + (totalResidents !== 1 ? 's' : '') + ' responded';
+
+                availabilityData = counts;
+            } catch (err) {
+                console.warn('Failed to load availability:', err);
+                document.getElementById('avail-count').textContent = 'Unavailable';
+            }
+        }
+
+        // =============================================
+        // ENSURE is_blocked COLUMN EXISTS
+        // =============================================
+        async function ensureBlockedColumn() {
+            // Try selecting is_blocked - if it fails, we need to tell admin to add it
+            const { error } = await db.from('users').select('is_blocked').limit(1);
+            if (error && error.code === '42703') {
+                console.warn('is_blocked column missing. Block feature will not work until column is added.');
+                // Show a toast if we're on the residents page
+                showToast('Note: Add "is_blocked" (boolean, default false) column to users table in Supabase to enable blocking.', 'error');
+            }
+        }
+
+        // =============================================
+        // INIT
+        // =============================================
+        // =============================================
+        // PROPERTY REQUESTS
+        // =============================================
+        async function loadPropertyRequests() {
+            try {
+                const { data, error } = await db.from('properties').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+
+                const tbody = document.getElementById('requests-table');
+                if (!data?.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-row">No property submissions yet</td></tr>';
+                    return;
+                }
+
+                // Update pending badge
+                const pendingCount = data.filter(p => p.status === 'pending').length;
+                const badge = document.getElementById('pending-badge');
+                if (pendingCount > 0) {
+                    badge.textContent = pendingCount;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                // Count residents per property
+                const { data: users } = await db.from('users').select('building_name');
+                const counts = {};
+                users?.forEach(u => { if (u.building_name) counts[u.building_name] = (counts[u.building_name] || 0) + 1; });
+
+                tbody.innerHTML = data.map(p => {
+                    const statusClass = p.status === 'approved' ? 'tag-green' : p.status === 'rejected' ? 'tag-red' : 'tag-orange';
+                    const statusLabel = (p.status || 'pending').charAt(0).toUpperCase() + (p.status || 'pending').slice(1);
+                    const resCount = counts[p.name] || 0;
+                    return `
+                    <tr>
+                        <td>
+                            <strong>${p.name}</strong>
+                            ${resCount ? '<br><span style="font-size:12px;color:var(--gray-400)">' + resCount + ' resident' + (resCount !== 1 ? 's' : '') + '</span>' : ''}
+                        </td>
+                        <td>${p.address || '-'}<br><span style="font-size:12px;color:var(--gray-400)">${[p.city, p.state].filter(Boolean).join(', ')}</span></td>
+                        <td>${p.manager_email || '<span style="color:var(--gray-400)">N/A</span>'}</td>
+                        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                        <td><span class="tag ${statusClass}">${statusLabel}</span></td>
+                        <td style="display:flex;gap:6px">
+                            ${p.status !== 'approved' ? `<button class="btn btn-sm" style="background:var(--green-light);color:#166534" onclick="approveProperty('${p.id}')">Approve</button>` : ''}
+                            ${p.status !== 'rejected' ? `<button class="btn btn-danger btn-sm" onclick="rejectProperty('${p.id}')">Reject</button>` : ''}
+                        </td>
+                    </tr>
+                `}).join('');
+            } catch (err) {
+                console.error('Error loading property requests:', err);
+            }
+        }
+
+        async function approveProperty(id) {
+            try {
+                const { error } = await db.from('properties').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', id);
+                if (error) throw error;
+                showToast('Property approved!');
+                loadPropertyRequests();
+            } catch (err) {
+                showToast('Error: ' + err.message, true);
+            }
+        }
+
+        async function rejectProperty(id) {
+            if (!confirm('Reject this property submission?')) return;
+            try {
+                const { error } = await db.from('properties').update({ status: 'rejected', updated_at: new Date().toISOString() }).eq('id', id);
+                if (error) throw error;
+                showToast('Property rejected');
+                loadPropertyRequests();
+            } catch (err) {
+                showToast('Error: ' + err.message, true);
+            }
+        }
+
+        async function init() {
+            try {
+                await Promise.all([
+                    loadStats(),
+                    loadMetrics(),
+                    loadProperties(),
+                    loadEvents(),
+                    loadResidents(),
+                    loadDashboardEvents(),
+                    loadErrorLogs(),
+                    loadOrganizations(),
+                    ensureBlockedColumn(),
+                    loadPropertyRequests(),
+                ]);
+                document.getElementById('status-dot').className = 'status-dot online';
+                document.getElementById('status-text').textContent = 'Connected';
+            } catch (err) {
+                console.error('Init error:', err);
+                document.getElementById('status-dot').className = 'status-dot offline';
+                document.getElementById('status-text').textContent = 'Connection error';
+            }
+        }
+
+        // ── Address Autocomplete (Nominatim / OpenStreetMap) ──
+        function initAddressAutocomplete(inputId, opts = {}) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            let debounceTimer = null;
+            let dropdown = null;
+
+            function removeDropdown() {
+                if (dropdown) { dropdown.remove(); dropdown = null; }
+            }
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const q = this.value.trim();
+                if (q.length < 3) { removeDropdown(); return; }
+                debounceTimer = setTimeout(() => fetchSuggestions(q), 500);
+            });
+
+            input.addEventListener('blur', function() {
+                setTimeout(removeDropdown, 200);
+            });
+
+            async function fetchSuggestions(query) {
+                try {
+                    const url = 'https://nominatim.openstreetmap.org/search'
+                        + '?q=' + encodeURIComponent(query)
+                        + '&format=json&addressdetails=1&limit=5&countrycodes=us';
+                    const res = await fetch(url, { headers: { 'User-Agent': 'SortAdmin/1.0' } });
+                    const results = await res.json();
+                    showDropdown(results);
+                } catch (e) { removeDropdown(); }
+            }
+
+            function showDropdown(results) {
+                removeDropdown();
+                if (!results.length) return;
+                dropdown = document.createElement('div');
+                dropdown.className = 'autocomplete-dropdown';
+                results.forEach(r => {
+                    const addr = r.address || {};
+                    const short = [addr.city || addr.town || addr.village || '', addr.state || ''].filter(Boolean).join(', ')
+                        || r.display_name.split(',').slice(0, 2).join(',');
+                    const item = document.createElement('div');
+                    item.className = 'ac-item';
+                    item.innerHTML = '<div>' + short + '</div><div class="ac-sub">' + r.display_name + '</div>';
+                    item.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        input.value = opts.useFullAddress ? r.display_name : short;
+                        if (opts.onSelect) opts.onSelect(r, addr);
+                        removeDropdown();
+                    });
+                    dropdown.appendChild(item);
+                });
+                input.parentElement.appendChild(dropdown);
+            }
+        }
+
+        // Wire up address autocomplete for property and event fields
+        function initAllAutocomplete() {
+            initAddressAutocomplete('prop-address', {
+                useFullAddress: false,
+                onSelect: function(r, addr) {
+                    const cityInput = document.getElementById('prop-city');
+                    const stateInput = document.getElementById('prop-state');
+                    const latInput = document.getElementById('prop-lat');
+                    const lngInput = document.getElementById('prop-lng');
+                    if (cityInput && addr.city) cityInput.value = addr.city;
+                    if (cityInput && !addr.city && addr.town) cityInput.value = addr.town;
+                    if (stateInput && addr.state) stateInput.value = addr.state.length > 2 ? addr.state.substring(0,2).toUpperCase() : addr.state;
+                    if (latInput && r.lat) latInput.value = r.lat;
+                    if (lngInput && r.lon) lngInput.value = r.lon;
+                }
+            });
+            initAddressAutocomplete('prop-city');
+            initAddressAutocomplete('evt-location');
+        }
+
+        // Init autocomplete when DOM is ready
+        initAllAutocomplete();
+
+        // Only init if already verified (returning session)
+        if (sessionStorage.getItem('sort_admin_verified') === 'true') {
+            init();
+        }
+    </script>
+</body>
+</html>
